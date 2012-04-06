@@ -1,0 +1,1 @@
+require 'flatfile_importer/importer'
