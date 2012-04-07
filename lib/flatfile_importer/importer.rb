@@ -190,5 +190,12 @@ module FlatfileImporter
       end
     end
   
+    def time_block_ms
+      beginning_time = Time.now
+      yield
+      end_time = Time.now
+      duration = (end_time - beginning_time)*1000
+    end
+    
   end
 end
