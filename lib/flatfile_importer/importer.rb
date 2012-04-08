@@ -137,7 +137,9 @@ module FlatfileImporter
         primary_record = @primary_records[primary_key]
         if !primary_record
           logger.info("found primary record #{primary_record}")
-          primary_record = primary_record_endpoint.where(primary_key_attribute => primary_key).first
+          primary_record = primary_record_endpoint.respond_to?(:where) ?
+            primary_record_endpoint.where(primary_key_attribute => primary_key).first :
+            primary_record_endpoint.find(:first, :conditions => {primary_key_attribute => primary_key}).first
           if primary_record
             logger.info("found existing #{primary_key}")
           else
