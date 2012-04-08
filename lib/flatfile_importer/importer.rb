@@ -89,7 +89,7 @@ module FlatfileImporter
           process_line(line)
         }
         logger.info("Processing line #{line} took #{ms} ms")
-        @organisation.inc(:import_progress, 1)
+        #@organisation.inc(:import_progress, 1)
       end
     
       results = {}
@@ -106,7 +106,7 @@ module FlatfileImporter
           saved = record.save
         }
         logger.info("Saving #{'existing ' if existing}#{record.class.name} #{record.id} took #{ms} ms")
-        @organisation.inc(:import_progress, 1)
+        #@organisation.inc(:import_progress, 1)
         if saved
           if existing
             results[clazz][:updated] << record
