@@ -2,7 +2,7 @@ module FlatfileImporter
   class Importer
     attr_accessor :spreadsheet
     attr_accessor :column_indices
-  
+    
     def initialize(filepath)
       read_excel(filepath)
       detect_columns
@@ -21,7 +21,13 @@ module FlatfileImporter
         raise err.message
       end
     end
-  
+    
+    # Return array of all allowable alternative column labels for given column
+    # Matching is case insensitive (case doesn't matter)
+    def synonym_column_labels(col_name)
+      [col_name.gsub('_', ' ')]
+    end
+    
     def detect_columns
       attrs = [primary_key_attribute] +
               primary_mass_assignable_attributes +
@@ -31,9 +37,10 @@ module FlatfileImporter
         attrs += attributes_for(join)
       end
       @column_indices = {}
+      actual_column_labels = @spreadsheet.row(1).map(&:downcase)
       attrs.each do |at|
-        ats = at.to_s
-        index = @spreadsheet.row(1).index {|item| item == ats}
+        ats = at.to_s.downcase
+        index = actual_column_labels.index { |item| [ats, synonym_column_labels(ats).map(&:downcase)].include?(item) }
         if index
           logger.info("#{at} is column #{index+1}")
           @column_indices[at] = index+1
@@ -99,7 +106,7 @@ module FlatfileImporter
         results[clazz][:updated] ||= []
         results[clazz][:created] ||= []
         results[clazz][:invalid] ||= []
-        existing = record.persisted?
+        existing = !record.new_record?
         saved = false
         ms = time_block_ms {
           record.last_imported_at = import_time if record.respond_to?(:last_imported_at)
@@ -120,9 +127,7 @@ module FlatfileImporter
     
       results
     end
-  
-  protected
-  
+    
     def logger
       Rails.logger
     end
