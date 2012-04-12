@@ -57,6 +57,10 @@ module FlatfileImporter
     def primary_complex_attributes
       raise "implement me"
     end
+    
+    def secondary_complex_attributes
+      []
+    end
   
     def joins
       raise "implement me"
@@ -186,6 +190,11 @@ module FlatfileImporter
           # Assign simple attributes
           attributes_for(join).map do |attr_name|
             secondary.send("#{attr_name}=", cell_value(line, attr_name))
+          end
+          
+          # Handle attributes/relations with custom import behaviour
+          secondary_complex_attributes.each do |attr_name|
+            assign_complex_attribute(secondary, attr_name, cell_value(line, attr_name))
           end
         
           @to_save << secondary unless primary_record.new_record?
