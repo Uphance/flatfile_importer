@@ -31,7 +31,8 @@ module FlatfileImporter
     def detect_columns
       attrs = [primary_key_attribute] +
               primary_mass_assignable_attributes +
-              primary_complex_attributes
+              primary_complex_attributes +
+              secondary_complex_attributes
       joins.each do |join|
         attrs += keys_for(join)
         attrs += attributes_for(join)
