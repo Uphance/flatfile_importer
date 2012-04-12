@@ -126,6 +126,7 @@ module FlatfileImporter
             results[clazz][:created] << record
           end
         else
+          logger.warn "Invalid import: #{record.errors.full_messages.to_sentence}"
           results[clazz][:invalid] << record
         end
       end
