@@ -29,7 +29,7 @@ module FlatfileImporter
     end
     
     def detect_columns
-      attrs = [primary_key_attribute] +
+      attrs = primary_record_key_cols +
               primary_mass_assignable_attributes +
               primary_complex_attributes +
               secondary_complex_attributes
@@ -64,7 +64,7 @@ module FlatfileImporter
     end
   
     def joins
-      raise "implement me"
+      []
     end
   
     def keys_for(join)
@@ -75,15 +75,23 @@ module FlatfileImporter
       raise "implement me"
     end
   
-    # How we key a primary record
-    def primary_key_attribute
-      raise "implement me"
-    end
-  
     def assign_complex_attribute(record, attr_name, value)
     end
-  
-    def primary_record_endpoint
+    
+    # Set of column values that uniquely identity a primary record (used for maintaining)
+    # cache of primary records as we iterate over the spreadsheet
+    def primary_record_key_cols
+      raise "implement me"
+    end
+    
+    # If multiple lines can represent same primary record, should return the same
+    # in-memory instance - superclass should maintain a cache
+    def find_primary_record(line)
+      raise "implement me"
+    end
+    
+    # Build a new primary record. Should also be subsequently returnable by find_primary_record
+    def build_primary_record(line)
       raise "implement me"
     end
   
@@ -141,23 +149,19 @@ module FlatfileImporter
   private
    
     def process_line(line)
-      primary_key = cell_value(line, primary_key_attribute)
+      # Just used for caching primary record
+      primary_key = primary_record_key_cols.map {|col| [col, cell_value(line, col)]}
       logger.info("processing line with primary key #{primary_key}")
     
       unless primary_key.blank?
         primary_record = @primary_records[primary_key]
         if !primary_record
           logger.info("found primary record #{primary_record}")
-          primary_record = primary_record_endpoint.respond_to?(:where) ?
-            primary_record_endpoint.where(primary_key_attribute => primary_key).first :
-            primary_record_endpoint.find(:first, :conditions => {primary_key_attribute => primary_key})
-          if primary_record
-            logger.info("found existing #{primary_key}")
+          primary_record = find_primary_record(line) || build_primary_record(line)
+          if !primary_record.new_record?
+            logger.info("found existing")
           else
-            logger.info("creating #{primary_key}")
-            primary_record = primary_record_endpoint.build(
-              primary_key_attribute => primary_key
-            )
+            logger.info("created new record")
           end
         
           # Assign simple attributes
@@ -167,7 +171,7 @@ module FlatfileImporter
         
           # Handle attributes/relations with custom import behaviour
           primary_complex_attributes.each do |attr_name|
-            assign_complex_attribute(primary_record, attr_name, cell_value(line, attr_name))
+            assign_complex_attribute(primary_record, attr_name, line)
           end
         else
           logger.info("already seen #{primary_key}")
@@ -196,7 +200,7 @@ module FlatfileImporter
           
           # Handle attributes/relations with custom import behaviour
           secondary_complex_attributes.each do |attr_name|
-            assign_complex_attribute(secondary, attr_name, cell_value(line, attr_name))
+            assign_complex_attribute(secondary, attr_name, line)
           end
         
           @to_save << secondary unless primary_record.new_record?
