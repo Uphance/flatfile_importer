@@ -24,29 +24,32 @@ module FlatfileImporter
     
     # Return array of all allowable alternative column labels for given column
     # Matching is case insensitive (case doesn't matter)
-    def synonym_column_labels(col_name)
-      [col_name.gsub('_', ' ')]
+    def acceptable_column_labels_for_attribute(attr_name, join)
+      [attr_name, attr_name.gsub('_', ' ')]
     end
     
     def detect_columns
       attrs = primary_record_key_cols +
               primary_mass_assignable_attributes +
-              primary_complex_attributes +
-              secondary_complex_attributes
+              primary_complex_attributes
+      detect_columns_for(attrs, nil)
       joins.each do |join|
-        attrs += keys_for(join)
-        attrs += attributes_for(join)
+        detect_columns_for(keys_for(join), join)
+        detect_columns_for(attributes_for(join), join)
       end
-      @column_indices = {}
+    end
+    
+    def detect_columns_for(attrs, join = nil)
+      @column_indices ||= {}
       actual_column_labels = @spreadsheet.row(1).map(&:downcase)
-      attrs.each do |at|
-        ats = at.to_s.downcase
-        index = actual_column_labels.index { |item| [ats, synonym_column_labels(ats).map(&:downcase)].include?(item) }
+      attrs.map(&:to_s).map(&:downcase).each do |attr|
+        column_labels = acceptable_column_labels_for_attribute(attr, join).map(&:downcase)
+        index = actual_column_labels.index { |item| column_labels.include?(item) }
         if index
-          logger.info("#{at} is column #{index+1}")
-          @column_indices[at] = index+1
+          logger.info("#{attr} is column #{index+1}")
+          @column_indices[[join, attr].compact.join('.')] = index+1
         else
-          raise "Couldn't find a header cell labelled \"#{at}\". Nothing imported."
+          raise "Couldn't find a header cell for \"#{attr}\". Looked for one of #{column_labels.join(', ')}. Nothing imported."
         end
       end
     end
@@ -59,10 +62,6 @@ module FlatfileImporter
       raise "implement me"
     end
     
-    def secondary_complex_attributes
-      []
-    end
-  
     def joins
       []
     end
@@ -84,18 +83,16 @@ module FlatfileImporter
       raise "implement me"
     end
     
-    # If multiple lines can represent same primary record, should return the same
-    # in-memory instance - superclass should maintain a cache
     def find_primary_record(line)
       raise "implement me"
     end
     
-    # Build a new primary record. Should also be subsequently returnable by find_primary_record
     def build_primary_record(line)
       raise "implement me"
     end
   
     def cell_value(line, col_label)
+      col_label = col_label.to_s
       @spreadsheet.cell(line, @column_indices[col_label]).to_s
     end
   
@@ -153,7 +150,7 @@ module FlatfileImporter
       primary_key = primary_record_key_cols.map {|col| [col, cell_value(line, col)]}
       logger.info("processing line with primary key #{primary_key}")
     
-      unless primary_key.blank?
+      unless primary_key.all? {|pair| pair.second.blank?}
         primary_record = @primary_records[primary_key]
         if !primary_record
           logger.info("found primary record #{primary_record}")
@@ -166,7 +163,9 @@ module FlatfileImporter
         
           # Assign simple attributes
           primary_mass_assignable_attributes.map do |attr_name|
-            primary_record.send("#{attr_name}=", cell_value(line, attr_name))
+            value = cell_value(line, attr_name)
+            logger.info("assigning #{attr_name} = #{value}")
+            primary_record.send("#{attr_name}=", value)
           end
         
           # Handle attributes/relations with custom import behaviour
@@ -179,7 +178,11 @@ module FlatfileImporter
       
         # Now deal with sub records
         joins.each do |join|
-          keys = Hash[*keys_for(join).map {|k| [k, cell_value(line, k)]}.flatten]
+          keys = Hash[*keys_for(join).map {|k| [k, cell_value(line, "#{join}.#{k}")]}.flatten]
+          if keys.values.all?(&:blank?) # reject if all keys blank
+            logger.info "Skipping #{join} on line #{line} because all keys are blank"
+            next
+          end
           # Might have to load whole relation and do manual detect to get autosaving working here
           secondary = primary_record.send(join).detect do |sec|
             keys.all? do |k,v|
@@ -195,13 +198,13 @@ module FlatfileImporter
         
           # Assign simple attributes
           attributes_for(join).map do |attr_name|
-            secondary.send("#{attr_name}=", cell_value(line, attr_name))
+            secondary.send("#{attr_name}=", cell_value(line, "#{join}.#{attr_name}"))
           end
           
           # Handle attributes/relations with custom import behaviour
-          secondary_complex_attributes.each do |attr_name|
-            assign_complex_attribute(secondary, attr_name, line)
-          end
+          #secondary_complex_attributes.each do |attr_name|
+          #  assign_complex_attribute(secondary, attr_name, line)
+          #end
         
           @to_save << secondary unless primary_record.new_record?
         end
