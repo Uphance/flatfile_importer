@@ -99,7 +99,7 @@ module FlatfileImporter
     def process_lines
       @primary_records = {}
       @to_save = Set.new
-      import_time = DateTime.now
+      import_time = Time.now.utc
         
       (2..@spreadsheet.last_row).each do |line|
         ms = time_block_ms {
