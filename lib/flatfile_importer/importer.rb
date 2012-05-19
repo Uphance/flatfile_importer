@@ -5,10 +5,10 @@ module FlatfileImporter
     
     def initialize(filepath)
       read_excel(filepath)
-      detect_columns
     end
   
     def import!
+      detect_columns
       process_lines
     end
   
@@ -36,6 +36,7 @@ module FlatfileImporter
       joins.each do |join|
         detect_columns_for(keys_for(join), join)
         detect_columns_for(attributes_for(join), join)
+        detect_columns_for(secondary_complex_attributes_for(join), join)
       end
     end
     
@@ -60,6 +61,10 @@ module FlatfileImporter
   
     def primary_complex_attributes
       raise "implement me"
+    end
+    
+    def secondary_complex_attributes_for(join)
+      []
     end
     
     def joins
@@ -91,9 +96,10 @@ module FlatfileImporter
       raise "implement me"
     end
   
-    def cell_value(line, col_label)
+    def cell_value(line, col_label, join = nil)
       col_label = col_label.to_s
-      @spreadsheet.cell(line, @column_indices[col_label]).to_s
+      col_label = "#{join}.#{col_label}" if join.present?
+      @spreadsheet.cell(line, @column_indices[col_label.downcase]).to_s
     end
   
     def process_lines
@@ -202,9 +208,9 @@ module FlatfileImporter
           end
           
           # Handle attributes/relations with custom import behaviour
-          #secondary_complex_attributes.each do |attr_name|
-          #  assign_complex_attribute(secondary, attr_name, line)
-          #end
+          secondary_complex_attributes_for(join).each do |attr_name|
+            assign_complex_attribute(secondary, attr_name, line)
+          end
         
           @to_save << secondary unless primary_record.new_record?
         end
