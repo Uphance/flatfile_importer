@@ -2,8 +2,10 @@ module FlatfileImporter
   class Importer
     attr_accessor :spreadsheet
     attr_accessor :column_indices
+    attr_accessor :set_imported_at
     
     def initialize(filepath)
+      self.set_imported_at = true
       read_excel(filepath)
     end
   
@@ -114,7 +116,9 @@ module FlatfileImporter
         logger.info("Processing line #{line} took #{ms} ms")
         #@organisation.inc(:import_progress, 1)
       end
-    
+      
+      about_to_save_records(@to_save)
+      
       results = {}
       @to_save.each do |record|
         clazz = record.class
@@ -125,12 +129,16 @@ module FlatfileImporter
         existing = !record.new_record?
         saved = false
         ms = time_block_ms {
-          record.last_imported_at = import_time if record.respond_to?(:last_imported_at)
+          if self.set_imported_at && record.respond_to?(:last_imported_at)
+            record.last_imported_at = import_time
+          end
           saved = record.save
         }
         logger.info("Saving #{'existing ' if existing}#{record.class.name} #{record.id} took #{ms} ms")
         #@organisation.inc(:import_progress, 1)
+        about_to_save_record(record)
         if saved
+          saved_record(record, true)
           if existing
             results[clazz][:updated] << record
           else
@@ -138,15 +146,30 @@ module FlatfileImporter
           end
         else
           logger.warn "Invalid import: #{record.errors.full_messages.to_sentence}"
+          saved_record(record, false)
           results[clazz][:invalid] << record
         end
       end
+      
+      finished_saving_records(@to_save)
     
       results
     end
     
     def logger
       Rails.logger
+    end
+    
+    def about_to_save_records(records)
+    end
+    
+    def about_to_save_record(record)
+    end
+    
+    def saved_record(record, success)
+    end
+    
+    def finished_saving_records(records)
     end
   
   private
