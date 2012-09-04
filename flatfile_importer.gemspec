@@ -4,14 +4,14 @@
 # -*- encoding: utf-8 -*-
 
 Gem::Specification.new do |s|
-  s.name = "flatfile_importer"
-  s.version = "0.5.0"
+  s.name = %q{flatfile_importer}
+  s.version = "0.6.0"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Tom Riley"]
-  s.date = "2012-06-05"
-  s.description = "framework for writing spreadsheet file importers"
-  s.email = "tom@smallroomsoftware.com"
+  s.date = %q{2012-09-04}
+  s.description = %q{framework for writing spreadsheet file importers}
+  s.email = %q{tom@smallroomsoftware.com}
   s.extra_rdoc_files = [
     "LICENSE.txt",
     "README.rdoc"
@@ -30,16 +30,17 @@ Gem::Specification.new do |s|
     "test/helper.rb",
     "test/test_flatfile_importer.rb"
   ]
-  s.homepage = "http://github.com/tomriley/flatfile_importer"
+  s.homepage = %q{http://github.com/tomriley/flatfile_importer}
   s.licenses = ["MIT"]
   s.require_paths = ["lib"]
-  s.rubygems_version = "1.8.17"
-  s.summary = "framework for writing spreadsheet file importers"
+  s.rubygems_version = %q{1.3.6}
+  s.summary = %q{framework for writing spreadsheet file importers}
 
   if s.respond_to? :specification_version then
+    current_version = Gem::Specification::CURRENT_SPECIFICATION_VERSION
     s.specification_version = 3
 
-    if Gem::Version.new(Gem::VERSION) >= Gem::Version.new('1.2.0') then
+    if Gem::Version.new(Gem::RubyGemsVersion) >= Gem::Version.new('1.2.0') then
       s.add_runtime_dependency(%q<roo>, [">= 0"])
       s.add_development_dependency(%q<rdoc>, ["~> 3.12"])
       s.add_development_dependency(%q<bundler>, ["~> 1.0.0"])
