@@ -3,13 +3,15 @@ module FlatfileImporter
     attr_accessor :spreadsheet
     attr_accessor :column_indices
     attr_reader :import_time
+    attr_accessor :set_imported_at
     
     def initialize(filepath)
+      self.set_imported_at = true
       read_excel(filepath)
-      detect_columns
     end
   
     def import!
+      detect_columns
       process_lines
     end
   
@@ -37,6 +39,7 @@ module FlatfileImporter
       joins.each do |join|
         detect_columns_for(keys_for(join), join)
         detect_columns_for(attributes_for(join), join)
+        detect_columns_for(secondary_complex_attributes_for(join), join)
       end
     end
     
@@ -61,6 +64,10 @@ module FlatfileImporter
   
     def primary_complex_attributes
       raise "implement me"
+    end
+    
+    def secondary_complex_attributes_for(join)
+      []
     end
     
     def joins
@@ -92,9 +99,10 @@ module FlatfileImporter
       raise "implement me"
     end
   
-    def cell_value(line, col_label)
+    def cell_value(line, col_label, join = nil)
       col_label = col_label.to_s
-      @spreadsheet.cell(line, @column_indices[col_label]).to_s
+      col_label = "#{join}.#{col_label}" if join.present?
+      @spreadsheet.cell(line, @column_indices[col_label.downcase]).to_s
     end
   
     def process_lines
@@ -109,7 +117,9 @@ module FlatfileImporter
         logger.info("Processing line #{line} took #{ms} ms")
         #@organisation.inc(:import_progress, 1)
       end
-    
+      
+      about_to_save_records(@to_save)
+      
       results = {}
       @to_save.each do |record|
         clazz = record.class
@@ -120,12 +130,16 @@ module FlatfileImporter
         existing = !record.new_record?
         saved = false
         ms = time_block_ms {
-          record.last_imported_at = @import_time if record.respond_to?(:last_imported_at)
+          if self.set_imported_at && record.respond_to?(:last_imported_at)
+            record.last_imported_at = @import_time
+          end
           saved = record.save
         }
         logger.info("Saving #{'existing ' if existing}#{record.class.name} #{record.id} took #{ms} ms")
         #@organisation.inc(:import_progress, 1)
+        about_to_save_record(record)
         if saved
+          saved_record(record, true)
           if existing
             results[clazz][:updated] << record
           else
@@ -133,15 +147,30 @@ module FlatfileImporter
           end
         else
           logger.warn "Invalid import: #{record.errors.full_messages.to_sentence}"
+          saved_record(record, false)
           results[clazz][:invalid] << record
         end
       end
+      
+      finished_saving_records(@to_save)
     
       results
     end
     
     def logger
       Rails.logger
+    end
+    
+    def about_to_save_records(records)
+    end
+    
+    def about_to_save_record(record)
+    end
+    
+    def saved_record(record, success)
+    end
+    
+    def finished_saving_records(records)
     end
   
   private
@@ -203,9 +232,9 @@ module FlatfileImporter
           end
           
           # Handle attributes/relations with custom import behaviour
-          #secondary_complex_attributes.each do |attr_name|
-          #  assign_complex_attribute(secondary, attr_name, line)
-          #end
+          secondary_complex_attributes_for(join).each do |attr_name|
+            assign_complex_attribute(secondary, attr_name, line)
+          end
         
           @to_save << secondary unless primary_record.new_record?
         end
