@@ -2,6 +2,7 @@ module FlatfileImporter
   class Importer
     attr_accessor :spreadsheet
     attr_accessor :column_indices
+    attr_reader :import_time
     
     def initialize(filepath)
       read_excel(filepath)
@@ -99,7 +100,7 @@ module FlatfileImporter
     def process_lines
       @primary_records = {}
       @to_save = Set.new
-      import_time = Time.now.utc
+      @import_time = Time.now.utc
         
       (2..@spreadsheet.last_row).each do |line|
         ms = time_block_ms {
@@ -119,7 +120,7 @@ module FlatfileImporter
         existing = !record.new_record?
         saved = false
         ms = time_block_ms {
-          record.last_imported_at = import_time if record.respond_to?(:last_imported_at)
+          record.last_imported_at = @import_time if record.respond_to?(:last_imported_at)
           saved = record.save
         }
         logger.info("Saving #{'existing ' if existing}#{record.class.name} #{record.id} took #{ms} ms")
