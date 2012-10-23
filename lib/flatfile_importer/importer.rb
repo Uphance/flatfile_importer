@@ -7,14 +7,28 @@ module FlatfileImporter
     
     def initialize(filepath)
       self.set_imported_at = true
-      read_excel(filepath)
+      case File.extname(filepath)
+      when '.xls'
+        read_excel(filepath)
+      when '.csv'
+        read_csv(filepath)
+      end
     end
   
     def import!
       detect_columns
       process_lines
     end
-  
+    
+    def read_csv(filepath)
+      begin
+        require 'iconv'
+        @spreadsheet = Csv.new(filepath)
+      rescue TypeError => err
+        raise err.message
+      end
+    end
+    
     def read_excel(filepath)
       begin
         require 'iconv'

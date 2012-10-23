@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = %q{flatfile_importer}
-  s.version = "0.6.0"
+  s.version = "0.7.0"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Tom Riley"]
-  s.date = %q{2012-09-04}
+  s.date = %q{2012-10-23}
   s.description = %q{framework for writing spreadsheet file importers}
   s.email = %q{tom@smallroomsoftware.com}
   s.extra_rdoc_files = [
