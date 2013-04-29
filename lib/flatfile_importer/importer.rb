@@ -251,7 +251,7 @@ module FlatfileImporter
             logger.info("creating new secondary for keys #{keys.values.join(', ')}")
             secondary = primary_record.send(join).build(keys)
           end
-        
+          
           # Assign simple attributes
           attributes_for(join).map do |attr_name|
             secondary.send("#{attr_name}=", cell_value(line, "#{join}.#{attr_name}"))
@@ -261,10 +261,10 @@ module FlatfileImporter
           secondary_complex_attributes_for(join).each do |attr_name|
             assign_complex_attribute(secondary, attr_name, line)
           end
-        
+          
           @to_save << secondary unless primary_record.new_record?
         end
-      
+        
         @primary_records[primary_key] = primary_record
         @to_save << primary_record
       
