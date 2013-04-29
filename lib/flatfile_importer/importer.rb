@@ -71,7 +71,7 @@ module FlatfileImporter
     
     def detect_columns_for(attrs, join = nil)
       @column_indices ||= {}
-      actual_column_labels = @spreadsheet.row(1).map(&:downcase)
+      actual_column_labels = @spreadsheet.row(1).map { |c| c.nil? ? '' : c.downcase }
       attrs.map(&:to_s).map(&:downcase).each do |attr|
         column_labels = acceptable_column_labels_for_attribute(attr, join).map(&:downcase)
         index = actual_column_labels.index { |item| column_labels.include?(item) }
