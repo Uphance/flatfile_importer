@@ -12,6 +12,8 @@ module FlatfileImporter
         read_excel(filepath)
       when '.csv'
         read_csv(filepath)
+      when '.xlsx'
+        read_excelx(filepath)
       end
     end
   
@@ -33,6 +35,16 @@ module FlatfileImporter
       begin
         require 'iconv'
         @spreadsheet = Excel.new(filepath)
+        @spreadsheet.default_sheet = @spreadsheet.sheets.first
+      rescue TypeError => err
+        raise err.message
+      end
+    end
+    
+    def read_excelx(filepath)
+      begin
+        require 'iconv'
+        @spreadsheet = Excelx.new(filepath)
         @spreadsheet.default_sheet = @spreadsheet.sheets.first
       rescue TypeError => err
         raise err.message
