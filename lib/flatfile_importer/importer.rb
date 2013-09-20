@@ -211,7 +211,11 @@ module FlatfileImporter
         if !primary_record
           logger.info("found primary record #{primary_record}")
           primary_record = find_primary_record(line) || build_primary_record(line)
-          if !primary_record.new_record?
+          if primary_record.nil?
+            # Skip
+            logger.info("build_primary_record for #{primary_key} returned nil so skipping line")
+            return
+          elsif !primary_record.new_record?
             logger.info("found existing")
           else
             logger.info("created new record")
